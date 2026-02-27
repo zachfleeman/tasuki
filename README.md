@@ -95,6 +95,8 @@ Add this module to `~/.config/waybar/config.jsonc` under the `modules-left`, `mo
 }
 ```
 
+If the module disappears on Waybar reload, use absolute paths (e.g., `/home/<USER>/.local/bin/tasuki`). Waybar may not inherit your `$PATH`.
+
 ## Configuration
 
 `~/.config/tasuki/config.toml` — changes are hot-reloaded. Press `c` in the TUI to edit. See [`config.example.toml`](config.example.toml) for all options.
