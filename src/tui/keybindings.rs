@@ -77,4 +77,12 @@ impl KeyBindings {
             _ => Some(Action::Cancel), // Any key closes help
         }
     }
+
+    pub fn handle_confirm(key: KeyEvent) -> Option<Action> {
+        match key.code {
+            KeyCode::Char('y') | KeyCode::Enter => Some(Action::Submit),
+            KeyCode::Char('n') | KeyCode::Esc | KeyCode::Char('q') => Some(Action::Cancel),
+            _ => None,
+        }
+    }
 }

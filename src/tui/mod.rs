@@ -327,6 +327,7 @@ fn handle_key(key: KeyEvent, app: &App) -> Option<Action> {
         AppMode::Normal => KeyBindings::handle_normal(key),
         AppMode::Input => KeyBindings::handle_input(key),
         AppMode::Help => KeyBindings::handle_help(key),
+        AppMode::Confirm => KeyBindings::handle_confirm(key),
     }
 }
 
@@ -362,7 +363,7 @@ async fn process_action(action: Action, app: &mut App) -> bool {
         }
         Action::OpenInSource | Action::OpenConfig => {}
         Action::DeleteTask => {
-            app.delete_selected_task().await;
+            app.start_delete_confirmation();
         }
         Action::QuickAdd => {
             app.start_quick_add();
@@ -378,14 +379,18 @@ async fn process_action(action: Action, app: &mut App) -> bool {
             app.toggle_help();
         }
         Action::Cancel => {
-            if app.mode == AppMode::Help {
-                app.mode = AppMode::Normal;
-            } else {
-                app.cancel_input();
+            match app.mode {
+                AppMode::Help => app.mode = AppMode::Normal,
+                AppMode::Confirm => app.cancel_confirm(),
+                _ => app.cancel_input(),
             }
         }
         Action::Submit => {
-            app.submit_input().await;
+            if app.mode == AppMode::Confirm {
+                app.execute_confirm().await;
+            } else {
+                app.submit_input().await;
+            }
         }
         Action::Backspace => {
             app.input_buffer.pop();

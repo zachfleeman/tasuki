@@ -2,7 +2,7 @@ use ratatui::Frame;
 
 use crate::tui::app::{App, AppMode};
 use crate::tui::theme::Theme;
-use crate::tui::views::{quick_add, task_list};
+use crate::tui::views::{confirm, quick_add, task_list};
 
 pub fn render(f: &mut Frame, app: &App, theme: &Theme) {
     let area = f.area();
@@ -23,6 +23,10 @@ pub fn render(f: &mut Frame, app: &App, theme: &Theme) {
         AppMode::Help => {
             task_list::draw_task_list(f, app, theme, area);
             task_list::draw_help(f, theme, area);
+        }
+        AppMode::Confirm => {
+            task_list::draw_task_list(f, app, theme, area);
+            confirm::draw_confirm(f, app, theme, area);
         }
     }
 }

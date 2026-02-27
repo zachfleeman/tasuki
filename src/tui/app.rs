@@ -9,6 +9,7 @@ pub enum AppMode {
     Normal,
     Input,
     Help,
+    Confirm,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,6 +17,11 @@ pub enum InputMode {
     QuickAdd,
     Search,
     EditTask(String), // Stores the task ID being edited
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConfirmAction {
+    DeleteTask(String),
 }
 
 #[derive(Debug, Clone)]
@@ -39,6 +45,8 @@ pub struct App {
     pub backend_manager: BackendManager,
     pub config: Config,
     pub should_quit: bool,
+    pub pending_confirm: Option<ConfirmAction>,
+    pub confirm_message: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,6 +79,8 @@ impl App {
             backend_manager,
             config,
             should_quit: false,
+            pending_confirm: None,
+            confirm_message: String::new(),
         }
     }
 
@@ -296,18 +306,6 @@ impl App {
         }
     }
 
-    pub async fn delete_selected_task(&mut self) {
-        if let Some(task) = self.get_selected_visible_task() {
-            let task_id = task.id.clone();
-            if let Err(e) = self.backend_manager.delete_task(&task_id).await {
-                self.set_status(format!("Failed to delete task: {}", e), StatusLevel::Error);
-            } else {
-                self.set_status("Task deleted", StatusLevel::Success);
-            }
-            self.refresh_tasks().await;
-        }
-    }
-
         pub fn edit_selected_task(&mut self) {
         use crate::model::Priority;
         
@@ -442,5 +440,41 @@ impl App {
         } else {
             self.mode = AppMode::Help;
         }
+    }
+
+    pub fn start_delete_confirmation(&mut self) {
+        if let Some(task) = self.get_selected_visible_task() {
+            let title = if task.title.len() > 40 {
+                format!("{}...", &task.title[..37])
+            } else {
+                task.title.clone()
+            };
+            self.confirm_message = format!("Delete \"{}\"?", title);
+            self.pending_confirm = Some(ConfirmAction::DeleteTask(task.id.clone()));
+            self.mode = AppMode::Confirm;
+        }
+    }
+
+    pub async fn execute_confirm(&mut self) {
+        if let Some(action) = self.pending_confirm.take() {
+            match action {
+                ConfirmAction::DeleteTask(task_id) => {
+                    if let Err(e) = self.backend_manager.delete_task(&task_id).await {
+                        self.set_status(format!("Failed to delete task: {}", e), StatusLevel::Error);
+                    } else {
+                        self.set_status("Task deleted", StatusLevel::Success);
+                    }
+                    self.refresh_tasks().await;
+                }
+            }
+        }
+        self.confirm_message.clear();
+        self.mode = AppMode::Normal;
+    }
+
+    pub fn cancel_confirm(&mut self) {
+        self.pending_confirm = None;
+        self.confirm_message.clear();
+        self.mode = AppMode::Normal;
     }
 }

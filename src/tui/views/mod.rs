@@ -1,3 +1,4 @@
+pub mod confirm;
 pub mod quick_add;
 pub mod task_list;
 
