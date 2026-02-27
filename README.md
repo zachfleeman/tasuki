@@ -44,11 +44,16 @@ Themes reload instantly when config changes.
 curl -fsSL https://github.com/zachfleeman/tasuki/raw/main/install.sh | bash
 ```
 
+Installs a prebuilt binary to `~/.local/bin/`.
+
 Or build from source:
 
 ```bash
-cargo install --path .
+git clone https://github.com/zachfleeman/tasuki.git
+cargo install --path tasuki
 ```
+
+Installs to `~/.cargo/bin/`.
 
 ## Quick Start
 
@@ -87,8 +92,6 @@ inbox_file = "Inbox.md"
     "tooltip": true
 }
 ```
-
-CSS classes: `has-overdue`, `has-tasks`, `all-done`, `backend-error`
 
 ## Configuration
 
