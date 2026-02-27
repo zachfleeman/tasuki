@@ -82,6 +82,8 @@ inbox_file = "Inbox.md"
 
 ## Waybar
 
+Add this module to `~/.config/waybar/config.jsonc` under the `modules-left`, `modules-center`, or `modules-right` config:
+
 ```jsonc
 "custom/tasks": {
     "exec": "tasuki",
