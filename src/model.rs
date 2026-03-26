@@ -30,6 +30,7 @@ pub struct Task {
     pub source_path: Option<String>,
     pub created_at: Option<NaiveDateTime>,
     pub completed_at: Option<NaiveDateTime>,
+    pub heading_context: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -77,4 +78,5 @@ pub struct TaskFilter {
     pub due_before: Option<NaiveDate>,
     pub due_after: Option<NaiveDate>,
     pub search: Option<String>,
+    pub has_due: Option<bool>,
 }

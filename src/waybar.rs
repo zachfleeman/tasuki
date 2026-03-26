@@ -82,9 +82,8 @@ fn build_output(tasks: &[Task], tooltip_scope: &str) -> Value {
     let upcoming_total: usize = upcoming_by_day.iter().map(|(_, tasks)| tasks.len()).sum();
     let future_count = future.len();
     let no_due_count = no_due.len();
-    let total = tasks.len();
+    let dated_total = tasks.len() - no_due_count;
 
-    // Smart badge: show the most urgent count
     let (display_text, class) = if overdue_count > 0 {
         (overdue_count.to_string(), "has-overdue")
     } else if today_count > 0 {
@@ -93,8 +92,8 @@ fn build_output(tasks: &[Task], tooltip_scope: &str) -> Value {
         (tomorrow_count.to_string(), "has-tasks")
     } else if upcoming_total > 0 {
         (upcoming_total.to_string(), "has-tasks")
-    } else if total > 0 {
-        (total.to_string(), "has-tasks")
+    } else if dated_total > 0 {
+        (dated_total.to_string(), "has-tasks")
     } else {
         ("✓".to_string(), "all-done")
     };
@@ -161,9 +160,9 @@ fn build_output(tasks: &[Task], tooltip_scope: &str) -> Value {
         }
 
         if no_due_count > 0 {
-            tooltip_lines.push(format!("No due date ({}):", no_due_count));
+            tooltip_lines.push(format!("Notes ({}):", no_due_count));
             for task in no_due.iter().take(5) {
-                tooltip_lines.push(format!("  ☐ {} {}", task.title, task.source.icon()));
+                tooltip_lines.push(format!("  📝 {} {}", task.title, task.source.icon()));
             }
             if no_due_count > 5 {
                 tooltip_lines.push(format!("  ... and {} more", no_due_count - 5));
@@ -182,7 +181,7 @@ fn build_output(tasks: &[Task], tooltip_scope: &str) -> Value {
     } else if future_count > 0 {
         format!("{} later", future_count)
     } else if no_due_count > 0 {
-        format!("{} tasks", no_due_count)
+        format!("{} notes", no_due_count)
     } else {
         "All done! ✓".to_string()
     };
@@ -222,6 +221,7 @@ mod tests {
             source_path: None,
             created_at: None,
             completed_at: None,
+            heading_context: None,
         }
     }
 
@@ -317,9 +317,8 @@ mod tests {
             make_task("No due 3", None),
         ];
         let output = build_output(&tasks, "overdue_today");
-        // Falls through to total
-        assert_eq!(output["text"], "3");
-        assert_eq!(output["class"], "has-tasks");
+        assert_eq!(output["text"], "✓");
+        assert_eq!(output["class"], "all-done");
     }
 
     #[test]
@@ -351,7 +350,7 @@ mod tests {
     // -- Tooltip scope tests --
 
     #[test]
-    fn test_tooltip_scope_all_shows_no_due() {
+    fn test_tooltip_scope_all_shows_notes() {
         let yesterday = today() - chrono::Duration::days(1);
         let tasks = vec![
             make_task("Overdue 1", Some(yesterday)),
@@ -361,7 +360,7 @@ mod tests {
         let output = build_output(&tasks, "all");
         let tooltip = output["tooltip"].as_str().unwrap();
         assert!(tooltip.contains("Overdue (1):"));
-        assert!(tooltip.contains("No due date (2):"));
+        assert!(tooltip.contains("Notes (2):"));
         assert!(tooltip.contains("No due 1"));
         assert!(tooltip.contains("No due 2"));
     }

@@ -10,7 +10,7 @@ use crate::model::{Priority, Task, TaskStatus};
 use crate::tui::app::App;
 use crate::tui::theme::Theme;
 
-pub fn draw_task_list(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
+pub fn draw_task_list(f: &mut Frame, app: &mut App, theme: &Theme, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(3), Constraint::Length(3)])
@@ -62,12 +62,16 @@ pub fn draw_task_list(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
     }
 
     let tasks_block = Block::default()
-        .title(format!(" Tasks ({}) ", app.tasks.len()))
+        .title(format!(
+            " {} ({}) ",
+            app.current_view.label(),
+            app.tasks.len()
+        ))
         .borders(Borders::ALL)
         .border_style(theme.style_muted());
 
     let list = List::new(items).block(tasks_block);
-    f.render_widget(list, task_area);
+    f.render_stateful_widget(list, task_area, &mut app.list_state);
 
     let status_text = if let Some((msg, level)) = &app.status_message {
         let style = match level {
@@ -81,10 +85,10 @@ pub fn draw_task_list(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
         Line::from(vec![
             Span::styled("↑/↓", theme.style_accent()),
             Span::styled(" navigate  ", theme.style_muted()),
+            Span::styled("n", theme.style_accent()),
+            Span::styled(" view  ", theme.style_muted()),
             Span::styled("a", theme.style_accent()),
             Span::styled(" add  ", theme.style_muted()),
-            Span::styled("e", theme.style_accent()),
-            Span::styled(" edit  ", theme.style_muted()),
             Span::styled("x", theme.style_accent()),
             Span::styled(" toggle  ", theme.style_muted()),
             Span::styled("/", theme.style_accent()),
@@ -134,8 +138,13 @@ fn format_task_line<'a>(task: &'a Task, theme: &'a Theme, width: u16) -> Line<'a
         tag_str.push_str(&format!("#{} ", tag));
     }
 
+    let ctx_len = task
+        .heading_context
+        .as_ref()
+        .map(|c| c.len() + 3)
+        .unwrap_or(0);
     let left_len =
-        2 + icon.len() + 1 + priority_marker.len() + task.title.len() + 1 + tag_str.len();
+        2 + icon.len() + 1 + ctx_len + priority_marker.len() + task.title.len() + 1 + tag_str.len();
     let right_len = source_label.len();
     let available = width.saturating_sub(2) as usize;
 
@@ -146,12 +155,17 @@ fn format_task_line<'a>(task: &'a Task, theme: &'a Theme, width: u16) -> Line<'a
     };
 
     let mut spans = vec![
-        Span::raw("  "), // Indent
+        Span::raw("  "),
         Span::styled(format!("{} ", icon), icon_style),
-        Span::styled(priority_marker.to_string(), priority_style),
-        Span::styled(task.title.clone(), theme.style_default()),
-        Span::raw(" "),
     ];
+
+    if let Some(ref ctx) = task.heading_context {
+        spans.push(Span::styled(format!("[{}] ", ctx), theme.style_muted()));
+    }
+
+    spans.push(Span::styled(priority_marker.to_string(), priority_style));
+    spans.push(Span::styled(task.title.clone(), theme.style_default()));
+    spans.push(Span::raw(" "));
 
     for tag in &task.tags {
         spans.push(Span::styled(format!("#{} ", tag), theme.style_highlight()));
@@ -217,6 +231,10 @@ pub fn draw_help(f: &mut Frame, theme: &Theme, area: Rect) {
         Line::from(vec![
             Span::styled("r", theme.style_accent()),
             Span::styled("         Refresh from backends", theme.style_default()),
+        ]),
+        Line::from(vec![
+            Span::styled("n/N", theme.style_accent()),
+            Span::styled("       Next/previous view", theme.style_default()),
         ]),
         Line::from(vec![
             Span::styled("d", theme.style_accent()),

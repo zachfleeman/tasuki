@@ -174,7 +174,7 @@ pub async fn run(backend_manager: BackendManager, config: crate::config::Config)
 
     loop {
         let current_theme = theme.get();
-        terminal.draw(|f| ui::render(f, &app, &current_theme))?;
+        terminal.draw(|f| ui::render(f, &mut app, &current_theme))?;
 
         let timeout = tick_rate
             .checked_sub(last_tick.elapsed())
@@ -374,6 +374,12 @@ async fn process_action(action: Action, app: &mut App) -> bool {
         Action::Refresh => {
             app.refresh_tasks().await;
             app.set_status("Tasks refreshed", crate::tui::app::StatusLevel::Info);
+        }
+        Action::NextView => {
+            app.cycle_view_forward().await;
+        }
+        Action::PreviousView => {
+            app.cycle_view_backward().await;
         }
         Action::Help => {
             app.toggle_help();

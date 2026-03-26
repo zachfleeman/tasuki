@@ -124,6 +124,11 @@ async fn run(command: Command, config: Config) -> Result<()> {
                     due_after: Some(chrono::Local::now().date_naive() + chrono::Duration::days(1)),
                     ..Default::default()
                 },
+                "notes" => TaskFilter {
+                    status: Some(TaskStatus::Pending),
+                    has_due: Some(false),
+                    ..Default::default()
+                },
                 "all" => TaskFilter::default(),
                 "done" => TaskFilter {
                     status: Some(TaskStatus::Done),

@@ -4,7 +4,7 @@ use crate::tui::app::{App, AppMode};
 use crate::tui::theme::Theme;
 use crate::tui::views::{confirm, quick_add, task_list};
 
-pub fn render(f: &mut Frame, app: &App, theme: &Theme) {
+pub fn render(f: &mut Frame, app: &mut App, theme: &Theme) {
     let area = f.area();
 
     f.render_widget(

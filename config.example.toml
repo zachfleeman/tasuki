@@ -1,5 +1,5 @@
 [general]
-# default_view = "today"       # TUI default view: today, upcoming, all, done
+# default_view = "all"         # TUI default view: all, today, upcoming, notes, done
 # theme = "omarchy"            # omarchy, dark, light, or custom theme name
 
 [waybar]
@@ -15,3 +15,6 @@ enabled = true
 # inbox_file = "Inbox.md"              # where quick-add tasks go
 # folders = ["Projects", "Areas"]      # only scan these folders (omit to scan all)
 # ignore_folders = [".obsidian", ".trash", ".git"]
+# daily_notes_folder = "Daily Notes"   # folder containing daily notes
+# daily_notes_format = "%Y-%m-%d"      # filename date format (without .md)
+# daily_notes_lookback = 7             # only scan daily notes from the last N days

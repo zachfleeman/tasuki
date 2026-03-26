@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use chrono::{Local, NaiveDate};
 use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -15,6 +16,9 @@ pub struct ObsidianConfig {
     pub folders: Option<Vec<String>>,
     pub ignore_folders: Vec<String>,
     pub inbox_file: String,
+    pub daily_notes_folder: Option<String>,
+    pub daily_notes_format: String,
+    pub daily_notes_lookback: Option<usize>,
 }
 
 impl ObsidianConfig {
@@ -57,11 +61,30 @@ impl ObsidianConfig {
             .unwrap_or("Inbox.md")
             .to_string();
 
+        let daily_notes_folder = table
+            .get("daily_notes_folder")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+
+        let daily_notes_format = table
+            .get("daily_notes_format")
+            .and_then(|v| v.as_str())
+            .unwrap_or("%Y-%m-%d")
+            .to_string();
+
+        let daily_notes_lookback = table
+            .get("daily_notes_lookback")
+            .and_then(|v| v.as_integer())
+            .map(|v| v as usize);
+
         Ok(Self {
             vault_path,
             folders,
             ignore_folders,
             inbox_file,
+            daily_notes_folder,
+            daily_notes_format,
+            daily_notes_lookback,
         })
     }
 
@@ -110,6 +133,28 @@ impl ObsidianBackend {
         Self { config }
     }
 
+    fn is_daily_note(&self, path: &Path) -> Option<NaiveDate> {
+        let daily_folder = self.config.daily_notes_folder.as_ref()?;
+        let rel_path = path.strip_prefix(&self.config.vault_path).ok()?;
+
+        if !rel_path.starts_with(daily_folder) {
+            return None;
+        }
+
+        let stem = path.file_stem()?.to_str()?;
+        NaiveDate::parse_from_str(stem, &self.config.daily_notes_format).ok()
+    }
+
+    fn within_lookback(&self, note_date: NaiveDate) -> bool {
+        match self.config.daily_notes_lookback {
+            Some(days) => {
+                let cutoff = Local::now().date_naive() - chrono::Duration::days(days as i64);
+                note_date >= cutoff
+            }
+            None => true,
+        }
+    }
+
     fn markdown_files(&self) -> Vec<PathBuf> {
         let mut files = Vec::new();
 
@@ -151,6 +196,12 @@ impl ObsidianBackend {
                 }
             }
 
+            if let Some(note_date) = self.is_daily_note(path) {
+                if !self.within_lookback(note_date) {
+                    continue;
+                }
+            }
+
             files.push(path.to_path_buf());
         }
 
@@ -169,24 +220,33 @@ impl ObsidianBackend {
             .to_string_lossy()
             .into_owned();
 
+        let daily_note_date = self.is_daily_note(path);
         let parsed = parser::parse_file(&content);
 
         let tasks = parsed
             .into_iter()
-            .map(|(line_num, parsed)| Task {
-                id: format!("obsidian:{}:{}", rel_path, line_num),
-                title: parsed.title,
-                status: parsed.status,
-                priority: parsed.priority,
-                due: parsed.due,
-                tags: parsed.tags,
-                source: BackendSource::Obsidian,
-                source_line: Some(line_num),
-                source_path: Some(path.to_string_lossy().into_owned()),
-                created_at: parsed.created_at.map(|d| d.and_hms_opt(0, 0, 0).unwrap()),
-                completed_at: parsed
-                    .completed_at
-                    .map(|d| d.and_hms_opt(0, 0, 0).unwrap()),
+            .map(|(line_num, parsed)| {
+                let created_at = parsed
+                    .created_at
+                    .or(daily_note_date)
+                    .map(|d| d.and_hms_opt(0, 0, 0).unwrap());
+
+                Task {
+                    id: format!("obsidian:{}:{}", rel_path, line_num),
+                    title: parsed.title,
+                    status: parsed.status,
+                    priority: parsed.priority,
+                    due: parsed.due,
+                    tags: parsed.tags,
+                    source: BackendSource::Obsidian,
+                    source_line: Some(line_num),
+                    source_path: Some(path.to_string_lossy().into_owned()),
+                    created_at,
+                    completed_at: parsed
+                        .completed_at
+                        .map(|d| d.and_hms_opt(0, 0, 0).unwrap()),
+                    heading_context: parsed.heading_context,
+                }
             })
             .collect();
 
@@ -351,6 +411,14 @@ impl TaskBackend for ObsidianBackend {
                         return false;
                     }
                 }
+                if let Some(has_due) = filter.has_due {
+                    if has_due && task.due.is_none() {
+                        return false;
+                    }
+                    if !has_due && task.due.is_some() {
+                        return false;
+                    }
+                }
                 true
             })
             .collect();
@@ -420,6 +488,7 @@ impl TaskBackend for ObsidianBackend {
             source_path: Some(inbox_path.to_string_lossy().into_owned()),
             created_at: None,
             completed_at: None,
+            heading_context: None,
         })
     }
 
@@ -499,6 +568,7 @@ impl TaskBackend for ObsidianBackend {
             source_path: Some(abs_path_str),
             created_at: None,
             completed_at: None,
+            heading_context: None,
         })
     }
 
@@ -620,6 +690,9 @@ mod tests {
                 ".git".to_string(),
             ],
             inbox_file: "Inbox.md".to_string(),
+            daily_notes_folder: Some("Daily Notes".to_string()),
+            daily_notes_format: "%Y-%m-%d".to_string(),
+            daily_notes_lookback: None,
         };
 
         (dir, config)
@@ -806,6 +879,9 @@ mod tests {
             folders: None,
             ignore_folders: vec![],
             inbox_file: "Inbox.md".to_string(),
+            daily_notes_folder: None,
+            daily_notes_format: "%Y-%m-%d".to_string(),
+            daily_notes_lookback: None,
         };
         assert!(!config.is_obsidian_vault());
 

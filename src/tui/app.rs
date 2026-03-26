@@ -1,8 +1,91 @@
 use std::collections::HashMap;
 
+use ratatui::widgets::ListState;
+
 use crate::backends::BackendManager;
 use crate::config::Config;
 use crate::model::{Task, TaskFilter, TaskStatus};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum View {
+    All,
+    Today,
+    Upcoming,
+    Notes,
+    Done,
+}
+
+impl View {
+    pub fn label(&self) -> &str {
+        match self {
+            View::All => "All",
+            View::Today => "Today",
+            View::Upcoming => "Upcoming",
+            View::Notes => "Notes",
+            View::Done => "Done",
+        }
+    }
+
+    pub fn next(&self) -> View {
+        match self {
+            View::All => View::Today,
+            View::Today => View::Upcoming,
+            View::Upcoming => View::Notes,
+            View::Notes => View::Done,
+            View::Done => View::All,
+        }
+    }
+
+    pub fn prev(&self) -> View {
+        match self {
+            View::All => View::Done,
+            View::Today => View::All,
+            View::Upcoming => View::Today,
+            View::Notes => View::Upcoming,
+            View::Done => View::Notes,
+        }
+    }
+
+    pub fn to_filter(&self) -> TaskFilter {
+        let today = chrono::Local::now().date_naive();
+        match self {
+            View::All => TaskFilter {
+                status: Some(TaskStatus::Pending),
+                ..Default::default()
+            },
+            View::Today => TaskFilter {
+                status: Some(TaskStatus::Pending),
+                due_before: Some(today),
+                ..Default::default()
+            },
+            View::Upcoming => TaskFilter {
+                status: Some(TaskStatus::Pending),
+                has_due: Some(true),
+                ..Default::default()
+            },
+            View::Notes => TaskFilter {
+                status: Some(TaskStatus::Pending),
+                has_due: Some(false),
+                ..Default::default()
+            },
+            View::Done => TaskFilter {
+                status: Some(TaskStatus::Done),
+                ..Default::default()
+            },
+        }
+    }
+
+    pub fn from_config(s: &str) -> View {
+        match s {
+            "today" => View::Today,
+            "upcoming" => View::Upcoming,
+            "all" => View::All,
+            "notes" => View::Notes,
+            "done" => View::Done,
+            _ => View::All,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppMode {
@@ -34,10 +117,12 @@ pub struct TaskGroup {
 
 pub struct App {
     pub mode: AppMode,
+    pub current_view: View,
     pub tasks: Vec<Task>,
     pub task_groups: Vec<TaskGroup>,
     pub selected_task: usize,
     pub selected_group: usize,
+    pub list_state: ListState,
     pub task_filter: TaskFilter,
     pub input_buffer: String,
     pub input_mode: Option<InputMode>,
@@ -66,13 +151,17 @@ pub enum VisibleItem {
 
 impl App {
     pub fn new(backend_manager: BackendManager, config: Config) -> Self {
+        let current_view = View::from_config(&config.general.default_view);
+        let task_filter = current_view.to_filter();
         Self {
             mode: AppMode::Normal,
+            current_view,
             tasks: Vec::new(),
             task_groups: Vec::new(),
             selected_task: 0,
             selected_group: 0,
-            task_filter: TaskFilter::default(),
+            list_state: ListState::default().with_selected(Some(0)),
+            task_filter,
             input_buffer: String::new(),
             input_mode: None,
             status_message: None,
@@ -110,7 +199,7 @@ impl App {
                 Some(d) if d == today => "Today".to_string(),
                 Some(d) if d == today + chrono::Duration::days(1) => "Tomorrow".to_string(),
                 Some(d) => format!("{}", d.format("%A %Y-%m-%d")),
-                None => "No due date".to_string(),
+                None => "Notes".to_string(),
             };
 
             let collapsed = self
@@ -191,6 +280,7 @@ impl App {
         let visible = self.visible_count();
         if visible > 0 && self.selected_task < visible - 1 {
             self.selected_task += 1;
+            self.list_state.select(Some(self.selected_task));
             self.update_selected_group();
         }
     }
@@ -198,6 +288,7 @@ impl App {
     pub fn move_selection_up(&mut self) {
         if self.selected_task > 0 {
             self.selected_task -= 1;
+            self.list_state.select(Some(self.selected_task));
             self.update_selected_group();
         }
     }
@@ -218,6 +309,7 @@ impl App {
         if self.selected_group < self.task_groups.len().saturating_sub(1) {
             self.selected_group += 1;
             self.selected_task = self.find_group_start(self.selected_group);
+            self.list_state.select(Some(self.selected_task));
         }
     }
 
@@ -225,6 +317,7 @@ impl App {
         if self.selected_group > 0 {
             self.selected_group -= 1;
             self.selected_task = self.find_group_start(self.selected_group);
+            self.list_state.select(Some(self.selected_task));
         }
     }
 
@@ -240,6 +333,26 @@ impl App {
             }
         }
         current
+    }
+
+    pub async fn cycle_view_forward(&mut self) {
+        self.current_view = self.current_view.next();
+        self.apply_view_filter().await;
+    }
+
+    pub async fn cycle_view_backward(&mut self) {
+        self.current_view = self.current_view.prev();
+        self.apply_view_filter().await;
+    }
+
+    async fn apply_view_filter(&mut self) {
+        let search = self.task_filter.search.take();
+        self.task_filter = self.current_view.to_filter();
+        self.task_filter.search = search;
+        self.selected_task = 0;
+        self.selected_group = 0;
+        self.list_state = ListState::default().with_selected(Some(0));
+        self.refresh_tasks().await;
     }
 
     pub fn set_status(&mut self, message: impl Into<String>, level: StatusLevel) {

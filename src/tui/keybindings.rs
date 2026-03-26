@@ -18,6 +18,8 @@ pub enum Action {
     Search,
     Refresh,
     Help,
+    NextView,
+    PreviousView,
     Cancel,
     Submit,
     Backspace,
@@ -55,6 +57,8 @@ impl KeyBindings {
             KeyCode::Char('a') => Some(Action::QuickAdd),
             KeyCode::Char('/') => Some(Action::Search),
             KeyCode::Char('r') => Some(Action::Refresh),
+            KeyCode::Char('n') => Some(Action::NextView),
+            KeyCode::Char('N') => Some(Action::PreviousView),
             KeyCode::Char('?') => Some(Action::Help),
 
             _ => None,

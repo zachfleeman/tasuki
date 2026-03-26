@@ -5,7 +5,7 @@ use std::path::PathBuf;
 #[derive(Parser)]
 #[command(name = "tasuki")]
 #[command(about = "タスキ — All of your tasks in your Waybar")]
-#[command(version = "0.0.1")]
+#[command(version = "0.2.0")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Command>,
@@ -35,7 +35,7 @@ pub enum Command {
 
     /// List tasks to stdout (for scripting)
     List {
-        /// Filter: today, upcoming, all, done
+        /// Filter: today, upcoming, all, notes, done
         #[arg(default_value = "today")]
         filter: String,
 

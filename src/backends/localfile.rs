@@ -126,6 +126,7 @@ impl LocalFileBackend {
             source_path: Some(self.config.path.to_string_lossy().into_owned()),
             created_at: created_at.map(|d| d.and_hms_opt(0, 0, 0).unwrap()),
             completed_at: completed_at.map(|d| d.and_hms_opt(0, 0, 0).unwrap()),
+            heading_context: None,
         })
     }
 
@@ -186,6 +187,10 @@ impl TaskBackend for LocalFileBackend {
             tasks.retain(|t| t.title.to_lowercase().contains(&search_lower));
         }
 
+        if let Some(has_due) = filter.has_due {
+            tasks.retain(|t| if has_due { t.due.is_some() } else { t.due.is_none() });
+        }
+
         Ok(tasks)
     }
 
@@ -238,6 +243,7 @@ impl TaskBackend for LocalFileBackend {
             source_path: Some(self.config.path.to_string_lossy().into_owned()),
             created_at: Some(today.and_hms_opt(0, 0, 0).unwrap()),
             completed_at: None,
+            heading_context: None,
         })
     }
 

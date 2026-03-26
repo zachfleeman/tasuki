@@ -137,7 +137,7 @@ fn test_waybar_with_todo_txt() {
 
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("\"text\":\"2\""))
+        .stdout(predicate::str::contains("\"text\":\"1\""))
         .stdout(predicate::str::contains("has-tasks"));
 }
 

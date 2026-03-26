@@ -11,6 +11,7 @@ pub struct ParsedTask {
     pub completed_at: Option<NaiveDate>,
     pub created_at: Option<NaiveDate>,
     pub tags: Vec<String>,
+    pub heading_context: Option<String>,
 }
 
 // Parse a checkbox line into a ParsedTask
@@ -158,13 +159,14 @@ pub fn parse_checkbox_line(line: &str) -> Option<ParsedTask> {
         completed_at,
         created_at,
         tags,
+        heading_context: None,
     })
 }
 
-// Parse checkbox tasks from a markdown file, skipping code blocks
 pub fn parse_file(content: &str) -> Vec<(usize, ParsedTask)> {
     let mut results = Vec::new();
     let mut in_code_block = false;
+    let mut current_heading: Option<String> = None;
 
     for (idx, line) in content.lines().enumerate() {
         let trimmed = line.trim();
@@ -178,12 +180,33 @@ pub fn parse_file(content: &str) -> Vec<(usize, ParsedTask)> {
             continue;
         }
 
-        if let Some(task) = parse_checkbox_line(line) {
+        if let Some(heading) = parse_heading(trimmed) {
+            current_heading = Some(heading);
+            continue;
+        }
+
+        if let Some(mut task) = parse_checkbox_line(line) {
+            task.heading_context = current_heading.clone();
             results.push((idx + 1, task));
         }
     }
 
     results
+}
+
+fn parse_heading(line: &str) -> Option<String> {
+    if !line.starts_with('#') {
+        return None;
+    }
+    let hashes = line.chars().take_while(|c| *c == '#').count();
+    if hashes == 0 || hashes > 6 {
+        return None;
+    }
+    let rest = line[hashes..].trim();
+    if rest.is_empty() {
+        return None;
+    }
+    Some(rest.to_string())
 }
 
 fn try_parse_next_date(tokens: &[&str], idx: usize) -> Option<NaiveDate> {
@@ -195,10 +218,23 @@ fn try_parse_next_date(tokens: &[&str], idx: usize) -> Option<NaiveDate> {
 
 fn is_metadata_token(token: &str) -> bool {
     matches!(
-        token,"📅"|"🗓️"| "🗓"| "✅"| "➕"
-        | "⏳"| "🛫"| "⏫"| "🔺"| "🔼"
-        | "🔽"| "⏬"| "🔁"| "🆔"|"⛔"
-        | "🏁") || token.starts_with('#')
+        token,
+        "📅" | "🗓️"
+            | "🗓"
+            | "✅"
+            | "➕"
+            | "⏳"
+            | "🛫"
+            | "⏫"
+            | "🔺"
+            | "🔼"
+            | "🔽"
+            | "⏬"
+            | "🔁"
+            | "🆔"
+            | "⛔"
+            | "🏁"
+    ) || token.starts_with('#')
         || token.starts_with("due:")
         || matches!(token, "(p1)" | "(p2)" | "(p3)")
 }
