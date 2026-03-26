@@ -355,6 +355,34 @@ impl App {
         self.refresh_tasks().await;
     }
 
+    pub async fn toggle_pin(&mut self) {
+        if let Some(task) = self.get_selected_visible_task() {
+            let mut new_tags = task.tags.clone();
+            if new_tags.iter().any(|t| t == "pin") {
+                new_tags.retain(|t| t != "pin");
+            } else {
+                new_tags.push("pin".to_string());
+            }
+
+            let update = crate::model::TaskUpdate {
+                tags: Some(new_tags),
+                ..Default::default()
+            };
+
+            match self.backend_manager.update_task(&task.id, &update).await {
+                Ok(t) => {
+                    let pinned = t.tags.iter().any(|tag| tag == "pin");
+                    let msg = if pinned { "Pinned" } else { "Unpinned" };
+                    self.set_status(format!("{}: {}", msg, t.title), StatusLevel::Success);
+                }
+                Err(e) => {
+                    self.set_status(format!("Failed to toggle pin: {}", e), StatusLevel::Error);
+                }
+            }
+            self.refresh_tasks().await;
+        }
+    }
+
     pub fn set_status(&mut self, message: impl Into<String>, level: StatusLevel) {
         self.status_message = Some((message.into(), level));
     }

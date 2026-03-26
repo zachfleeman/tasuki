@@ -18,6 +18,7 @@ pub enum Action {
     Search,
     Refresh,
     Help,
+    TogglePin,
     NextView,
     PreviousView,
     Cancel,
@@ -54,11 +55,12 @@ impl KeyBindings {
                 // For now, just single 'd' opens delete confirmation
                 Some(Action::DeleteTask)
             }
+            KeyCode::Char('p') => Some(Action::TogglePin),
             KeyCode::Char('a') => Some(Action::QuickAdd),
             KeyCode::Char('/') => Some(Action::Search),
             KeyCode::Char('r') => Some(Action::Refresh),
-            KeyCode::Char('n') => Some(Action::NextView),
-            KeyCode::Char('N') => Some(Action::PreviousView),
+            KeyCode::Char('v') => Some(Action::NextView),
+            KeyCode::Char('V') => Some(Action::PreviousView),
             KeyCode::Char('?') => Some(Action::Help),
 
             _ => None,

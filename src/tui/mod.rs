@@ -358,6 +358,9 @@ async fn process_action(action: Action, app: &mut App) -> bool {
         Action::ToggleTask => {
             app.toggle_selected_task().await;
         }
+        Action::TogglePin => {
+            app.toggle_pin().await;
+        }
         Action::EditTask => {
             app.edit_selected_task();
         }

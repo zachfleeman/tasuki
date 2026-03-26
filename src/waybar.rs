@@ -170,6 +170,21 @@ fn build_output(tasks: &[Task], tooltip_scope: &str) -> Value {
         }
     }
 
+    let pinned: Vec<&Task> = tasks.iter()
+        .filter(|t| t.tags.iter().any(|tag| tag == "pin"))
+        .collect();
+
+    if !pinned.is_empty() {
+        tooltip_lines.push(format!("Pinned ({}):", pinned.len()));
+        for task in pinned.iter().take(5) {
+            tooltip_lines.push(format!("  📌 {} {}", task.title, task.source.icon()));
+        }
+        if pinned.len() > 5 {
+            tooltip_lines.push(format!("  ... and {} more", pinned.len() - 5));
+        }
+        tooltip_lines.push(String::new());
+    }
+
     let summary = if overdue_count > 0 {
         format!("{} overdue · {} today", overdue_count, today_count)
     } else if today_count > 0 {

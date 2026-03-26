@@ -85,7 +85,7 @@ pub fn draw_task_list(f: &mut Frame, app: &mut App, theme: &Theme, area: Rect) {
         Line::from(vec![
             Span::styled("↑/↓", theme.style_accent()),
             Span::styled(" navigate  ", theme.style_muted()),
-            Span::styled("n", theme.style_accent()),
+            Span::styled("v", theme.style_accent()),
             Span::styled(" view  ", theme.style_muted()),
             Span::styled("a", theme.style_accent()),
             Span::styled(" add  ", theme.style_muted()),
@@ -132,19 +132,28 @@ fn format_task_line<'a>(task: &'a Task, theme: &'a Theme, width: u16) -> Line<'a
     };
 
     let source_label = format!("[{}]", task.source.name());
+    let is_pinned = task.tags.iter().any(|t| t == "pin");
 
     let mut tag_str = String::new();
     for tag in &task.tags {
         tag_str.push_str(&format!("#{} ", tag));
     }
 
+    let pin_len = if is_pinned { 3 } else { 0 };
     let ctx_len = task
         .heading_context
         .as_ref()
         .map(|c| c.len() + 3)
         .unwrap_or(0);
-    let left_len =
-        2 + icon.len() + 1 + ctx_len + priority_marker.len() + task.title.len() + 1 + tag_str.len();
+    let left_len = 2
+        + icon.len()
+        + 1
+        + pin_len
+        + ctx_len
+        + priority_marker.len()
+        + task.title.len()
+        + 1
+        + tag_str.len();
     let right_len = source_label.len();
     let available = width.saturating_sub(2) as usize;
 
@@ -158,6 +167,10 @@ fn format_task_line<'a>(task: &'a Task, theme: &'a Theme, width: u16) -> Line<'a
         Span::raw("  "),
         Span::styled(format!("{} ", icon), icon_style),
     ];
+
+    if is_pinned {
+        spans.push(Span::styled("📌 ", theme.style_accent()));
+    }
 
     if let Some(ref ctx) = task.heading_context {
         spans.push(Span::styled(format!("[{}] ", ctx), theme.style_muted()));
@@ -213,6 +226,10 @@ pub fn draw_help(f: &mut Frame, theme: &Theme, area: Rect) {
             Span::styled(" Toggle task complete/pending", theme.style_default()),
         ]),
         Line::from(vec![
+            Span::styled("p", theme.style_accent()),
+            Span::styled("         Pin/unpin for waybar", theme.style_default()),
+        ]),
+        Line::from(vec![
             Span::styled("e", theme.style_accent()),
             Span::styled("         Quick edit task", theme.style_default()),
         ]),
@@ -233,7 +250,7 @@ pub fn draw_help(f: &mut Frame, theme: &Theme, area: Rect) {
             Span::styled("         Refresh from backends", theme.style_default()),
         ]),
         Line::from(vec![
-            Span::styled("n/N", theme.style_accent()),
+            Span::styled("v/V", theme.style_accent()),
             Span::styled("       Next/previous view", theme.style_default()),
         ]),
         Line::from(vec![
