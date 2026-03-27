@@ -28,7 +28,7 @@ pub fn draw_input(f: &mut Frame, app: &App, theme: &Theme, area: Rect) {
     f.render_widget(Clear, area);
     f.render_widget(input, area);
 
-    let cursor_x = area.x + app.input_buffer.len() as u16 + 1;
+    let cursor_x = area.x + app.cursor_position as u16 + 1;
     let cursor_y = area.y + 1;
     f.set_cursor_position((cursor_x, cursor_y));
 

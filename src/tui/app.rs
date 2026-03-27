@@ -125,6 +125,7 @@ pub struct App {
     pub list_state: ListState,
     pub task_filter: TaskFilter,
     pub input_buffer: String,
+    pub cursor_position: usize,
     pub input_mode: Option<InputMode>,
     pub status_message: Option<(String, StatusLevel)>,
     pub backend_manager: BackendManager,
@@ -163,6 +164,7 @@ impl App {
             list_state: ListState::default().with_selected(Some(0)),
             task_filter,
             input_buffer: String::new(),
+            cursor_position: 0,
             input_mode: None,
             status_message: None,
             backend_manager,
@@ -473,6 +475,7 @@ impl App {
             self.mode = AppMode::Input;
             self.input_mode = Some(InputMode::EditTask(task.id.clone()));
             self.input_buffer = edit_text;
+            self.cursor_position = self.input_buffer.len();
         }
     }
 
@@ -480,18 +483,21 @@ impl App {
         self.mode = AppMode::Input;
         self.input_mode = Some(InputMode::QuickAdd);
         self.input_buffer.clear();
+        self.cursor_position = 0;
     }
 
     pub fn start_search(&mut self) {
         self.mode = AppMode::Input;
         self.input_mode = Some(InputMode::Search);
         self.input_buffer.clear();
+        self.cursor_position = 0;
     }
 
     pub fn cancel_input(&mut self) {
         self.mode = AppMode::Normal;
         self.input_mode = None;
         self.input_buffer.clear();
+        self.cursor_position = 0;
     }
 
     pub async fn submit_input(&mut self) {
@@ -573,6 +579,7 @@ impl App {
         self.mode = AppMode::Normal;
         self.input_mode = None;
         self.input_buffer.clear();
+        self.cursor_position = 0;
     }
 
     pub fn toggle_help(&mut self) {

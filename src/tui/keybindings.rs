@@ -24,6 +24,10 @@ pub enum Action {
     Cancel,
     Submit,
     Backspace,
+    CursorLeft,
+    CursorRight,
+    CursorHome,
+    CursorEnd,
     Char(char),
 }
 
@@ -72,6 +76,10 @@ impl KeyBindings {
             KeyCode::Esc => Some(Action::Cancel),
             KeyCode::Enter => Some(Action::Submit),
             KeyCode::Backspace => Some(Action::Backspace),
+            KeyCode::Left => Some(Action::CursorLeft),
+            KeyCode::Right => Some(Action::CursorRight),
+            KeyCode::Home => Some(Action::CursorHome),
+            KeyCode::End => Some(Action::CursorEnd),
             KeyCode::Char(c) => Some(Action::Char(c)),
             _ => None,
         }

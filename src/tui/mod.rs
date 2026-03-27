@@ -402,10 +402,30 @@ async fn process_action(action: Action, app: &mut App) -> bool {
             }
         }
         Action::Backspace => {
-            app.input_buffer.pop();
+            if app.cursor_position > 0 {
+                app.input_buffer.remove(app.cursor_position - 1);
+                app.cursor_position -= 1;
+            }
+        }
+        Action::CursorLeft => {
+            if app.cursor_position > 0 {
+                app.cursor_position -= 1;
+            }
+        }
+        Action::CursorRight => {
+            if app.cursor_position < app.input_buffer.len() {
+                app.cursor_position += 1;
+            }
+        }
+        Action::CursorHome => {
+            app.cursor_position = 0;
+        }
+        Action::CursorEnd => {
+            app.cursor_position = app.input_buffer.len();
         }
         Action::Char(c) => {
-            app.input_buffer.push(c);
+            app.input_buffer.insert(app.cursor_position, c);
+            app.cursor_position += 1;
         }
     }
     false
